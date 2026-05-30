@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CineSync — Find Your Next Film</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0b08;
+      --surface: #1a1410;
+      --card: #211c16;
+      --amber: #d4930a;
+      --amber-light: #f0b830;
+      --cream: #f0e6d0;
+      --muted: #7a6e5f;
+      --border: #2e2618;
+      --red: #8b1a1a;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--cream);
+      font-family: 'Courier Prime', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 100;
+      opacity: 0.4;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.7) 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 52px;
+      animation: fadeIn 1s ease both;
+    }
+
+    .film-strip {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 24px;
+    }
+
+    .film-hole {
+      width: 10px;
+      height: 10px;
+      border: 1px solid var(--amber);
+      border-radius: 2px;
+      opacity: 0.4;
+    }
+
+    .logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(3rem, 8vw, 5rem);
+      font-weight: 300;
+      letter-spacing: 0.15em;
+      color: var(--cream);
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    .logo em {
+      color: var(--amber);
+      font-style: italic;
+      font-weight: 300;
+    }
+
+    .subtitle {
+      margin-top: 10px;
+      font-size: 0.7rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .ornament {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 18px;
+      color: var(--amber);
+      opacity: 0.6;
+      font-size: 0.8rem;
+      letter-spacing: 0.2em;
+    }
+
+    .ornament::before,
+    .ornament::after {
+      content: '';
+      width: 60px;
+      height: 1px;
+      background: var(--amber);
+      opacity: 0.5;
+    }
+
+    .search-section {
+      animation: fadeIn 1s ease 0.3s both;
+    }
+
+    .search-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .search-wrapper {
+      display: flex;
+      gap: 0;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .search-wrapper:focus-within {
+      border-color: var(--amber);
+    }
+
+    .search-input {
+      flex: 1;
+      background: var(--surface);
+      border: none;
+      padding: 18px 22px;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.2rem;
+      font-style: italic;
+      color: var(--cream);
+      outline: none;
+    }
+
+    .search-input::placeholder {
+      color: var(--muted);
+      font-style: italic;
+    }
+    .search-btn {
+      background: var(--amber);
+      color: var(--bg);
+      border: none;
+      padding: 18px 28px;
+      font-family: 'Courier Prime', monospace;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .search-btn:hover { background: var(--amber-light); }
+    .search-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .error-msg {
+      display: none;
+      margin-top: 12px;
+      font-size: 0.8rem;
+      color: #c07070;
+      letter-spacing: 0.05em;
+      padding: 10px 14px;
+      border-left: 2px solid var(--red);
+      background: rgba(139,26,26,0.1);
+    }
+    .error-msg.active { display: block; }
+
+    .loader {
+      display: none;
+      text-align: center;
+      padding: 56px 0;
+    }
+    .loader.active { display: block; }
+
+    .projector {
+      font-size: 0.7rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--muted);
+      animation: flicker 1.5s infinite;
+    }
+
+    .reel {
+      display: inline-block;
+      font-size: 2rem;
+      animation: spin 2s linear infinite;
+      margin-bottom: 12px;
+    }
+
+    .results-section {
+      display: none;
+      margin-top: 52px;
+    }
+    .results-section.active {
+      display: block;
+      animation: fadeIn 0.6s ease both;
+    }
+
+    .results-header {
+      text-align: center;
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .because-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .matched-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2rem;
+      font-style: italic;
+      font-weight: 300;
+      color: var(--amber-light);
+    }
+
+    .results-count {
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      color: var(--muted);
+      margin-top: 6px;
+      text-transform: uppercase;
+    }
+
+    .movies-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .movie-card {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 14px 20px;
+      background: var(--surface);
+      border-left: 2px solid transparent;
+      transition: border-color 0.2s, background 0.2s, transform 0.2s;
+      animation: slideIn 0.4s ease both;
+      cursor: default;
+    }
+
+    .movie-card:hover {
+      border-left-color: var(--amber);
+      background: var(--card);
+      transform: translateX(4px);
+    }
+
+    .movie-number {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 0.75rem;
+      color: var(--amber);
+      opacity: 0.6;
+      min-width: 28px;
+      font-style: italic;
+      letter-spacing: 0.05em;
+    }
+
+    .movie-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.05rem;
+      font-weight: 400;
+      color: var(--cream);
+      letter-spacing: 0.02em;
+    }
+
+    .movie-dash {
+      flex: 1;
+      height: 1px;
+      background: repeating-linear-gradient(
+        90deg,
+        var(--border) 0px,
+        var(--border) 4px,
+        transparent 4px,
+        transparent 8px
+      );
+      opacity: 0.4;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-12px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes flicker {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .movie-card:nth-child(1)  { animation-delay: 0.03s; }
+    .movie-card:nth-child(2)  { animation-delay: 0.06s; }
+    .movie-card:nth-child(3)  { animation-delay: 0.09s; }
+    .movie-card:nth-child(4)  { animation-delay: 0.12s; }
+    .movie-card:nth-child(5)  { animation-delay: 0.15s; }
+    .movie-card:nth-child(6)  { animation-delay: 0.18s; }
+    .movie-card:nth-child(7)  { animation-delay: 0.21s; }
+    .movie-card:nth-child(8)  { animation-delay: 0.24s; }
+    .movie-card:nth-child(9)  { animation-delay: 0.27s; }
+    .movie-card:nth-child(10) { animation-delay: 0.30s; }
+
+    footer {
+      text-align: center;
+      margin-top: 60px;
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      color: var(--muted);
+      text-transform: uppercase;
+      opacity: 0.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <header>
+      <div class="film-strip">
+        <div class="film-hole"></div>
+        <div class="film-hole"></div>
+        <div class="film-hole"></div>
+        <div class="film-hole"></div>
+        <div class="film-hole"></div>
+        <div class="film-hole"></div>
+        <div class="film-hole"></div>
+      </div>
+      <div class="logo">Cine<em>Sync</em></div>
+      <p class="subtitle">A personal cinema guide</p>
+      <div class="ornament">✦</div>
+    </header>
+
+    <section class="search-section">
+      <span class="search-label">Enter a film you love</span>
+      <div class="search-wrapper">
+        <input
+          type="text"
+          class="search-input"
+          id="movieInput"
+          placeholder="e.g. Casablanca, Inception, The Godfather..."
+          autocomplete="off"
+        />
+        <button class="search-btn" id="searchBtn" onclick="getRecommendations()">
+          Find Films
+        </button>
+      </div>
+      <div class="error-msg" id="errorMsg"></div>
+    </section>
+
+    <div class="loader" id="loader">
+      <div class="reel">⚙</div>
+      <p class="projector">Searching the archives...</p>
+    </div>
+
+    <section class="results-section" id="resultsSection">
+      <div class="results-header">
+        <p class="because-label">Because you watched</p>
+        <div class="matched-title" id="matchedTitle"></div>
+        <p class="results-count" id="resultsCount"></p>
+      </div>
+      <div class="movies-list" id="moviesList"></div>
+    </section>
+
+    <footer>
+      CineSync &nbsp;✦&nbsp; Content-Based Recommendations
+    </footer>
+
+  </div>
+
+  <script>
+    const input = document.getElementById('movieInput');
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') getRecommendations();
+    });
+
+    async function getRecommendations() {
+      const movieName = input.value.trim();
+      if (!movieName) return;
+
+      const btn = document.getElementById('searchBtn');
+      const loader = document.getElementById('loader');
+      const errorMsg = document.getElementById('errorMsg');
+      const resultsSection = document.getElementById('resultsSection');
+      const moviesList = document.getElementById('moviesList');
+      const matchedTitle = document.getElementById('matchedTitle');
+      const resultsCount = document.getElementById('resultsCount');
+
+      btn.disabled = true;
+      errorMsg.classList.remove('active');
+      resultsSection.classList.remove('active');
+      loader.classList.add('active');
+
+      try {
+        const response = await fetch('/recommend', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ movie_name: movieName })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          errorMsg.textContent = '— ' + (data.error || 'Something went wrong.');
+          errorMsg.classList.add('active');
+        } else {
+          matchedTitle.textContent = data.matched;
+          resultsCount.textContent = data.recommendations.length + ' films selected for you';
+
+          moviesList.innerHTML = data.recommendations.map((title, i) => `
+          <div class="movie-card">
+              <span class="movie-number">${String(i + 1).padStart(2, '0')}.</span>
+              <span class="movie-title">${title}</span>
+              <span class="movie-dash"></span>
+            </div>
+          `).join('');
+
+          resultsSection.classList.add('active');
+        }
+      } catch (err) {
+        errorMsg.textContent = '— Could not connect. Is Flask running?';
+        errorMsg.classList.add('active');
+      } finally {
+        loader.classList.remove('active');
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
